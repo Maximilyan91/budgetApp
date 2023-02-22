@@ -15,9 +15,10 @@ public class TransactionController {
         this.budgetService = budgetService;
     }
 
-    @GetMapping
+    @PostMapping
     public ResponseEntity<Long> addTransaction(@RequestBody Transaction transaction) {
         long id = budgetService.addTransaction(transaction);
+
         return ResponseEntity.ok().body(id);
     }
 
@@ -28,5 +29,27 @@ public class TransactionController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(transaction);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Transaction> editTransaction(@PathVariable long id, @RequestBody Transaction transaction) {
+        transaction = budgetService.editTransaction(id, transaction);
+        if (transaction == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(transaction);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable long id) {
+        if (budgetService.deleteTransaction(id)) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    public ResponseEntity<Void> deleteAllTransactions() {
+        budgetService.deleteAllTransactions();
+        return ResponseEntity.ok().build();
     }
 }

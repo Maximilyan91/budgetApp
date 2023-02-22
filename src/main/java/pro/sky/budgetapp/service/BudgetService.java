@@ -11,6 +11,12 @@ public interface BudgetService {
 
     Transaction getTransaction(long id);
 
+    Transaction editTransaction(long id, Transaction transaction);
+
+    boolean deleteTransaction(long id);
+
+    void deleteAllTransactions();
+
     int getDailyBalance();
 
     int getAllSpend();
