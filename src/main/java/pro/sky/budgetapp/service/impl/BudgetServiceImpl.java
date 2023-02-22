@@ -6,7 +6,6 @@ import pro.sky.budgetapp.service.BudgetService;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -34,16 +33,28 @@ public class BudgetServiceImpl implements BudgetService {
         return SALARY - SAVING - getAllSpend();
     }
 
-    public void addTransaction(Transaction transaction) { //Добавление транзакции(когда мы покупаем что-то)
+    @Override
+    public long addTransaction(Transaction transaction) { //Добавление транзакции(когда мы покупаем что-то)
         Map<Long, Transaction> monthTransactions = transactions.getOrDefault(LocalDate.now().getMonth(), new LinkedHashMap<>());
-        monthTransactions.put(lastId++, transaction);
+        monthTransactions.put(lastId, transaction);
+        return lastId++;
     }
-
+    @Override
+    public Transaction getTransaction(long id) {
+        for (Map<Long, Transaction> transactionByMonth : transactions.values()) {
+            Transaction transaction = transactionByMonth.get(id);
+            if (transaction != null) {
+                return transaction;
+            }
+        }
+        return null;
+    }
+    @Override
     public int getDailyBalance() { //Остаток средств на текущий день (сколько еще можно сегодня потратить)
         return DAILY_BUDGET * LocalDate.now().getDayOfMonth() - getAllSpend();
     }
-
-    private int getAllSpend() { //Получить все траты (подсчет сколько мы уже потратили)
+    @Override
+    public int getAllSpend() { //Получить все траты (подсчет сколько мы уже потратили)
         Map<Long, Transaction> monthTransactions = transactions.getOrDefault(LocalDate.now().getMonth(), new LinkedHashMap<>());
 
 
