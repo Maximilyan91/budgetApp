@@ -1,9 +1,14 @@
 package pro.sky.budgetapp.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import pro.sky.budgetapp.model.Transaction;
 import pro.sky.budgetapp.service.BudgetService;
+import pro.sky.budgetapp.service.FilesService;
 
+import javax.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.LinkedHashMap;
@@ -12,15 +17,20 @@ import java.util.TreeMap;
 
 @Service
 public class BudgetServiceImpl implements BudgetService {
+    private final FilesService filesService;
 
     public static final int SALARY = 20000;
     public static final int SAVING = 3000;
     public static final int DAILY_BUDGET = (SALARY - SAVING) / LocalDate.now().lengthOfMonth(); //бюджет на день
     public static final int AVG_SALARY = (10000 + 10000 + 10000 + 10000 + 10000 + 15000 + 15000 + 15000 + 15000 + 15000 + 15000 + 20000) / 12;
     public static final double AVG_DAYS = 29.3;
-    private static Map<Month, Map<Long, Transaction>> transactions = new TreeMap<>();
+    private static TreeMap<Month, LinkedHashMap<Long, Transaction>> transactions = new TreeMap<>();
     public static int balance = 0;
     private static long lastId = 0;
+
+    public BudgetServiceImpl(FilesService filesService) {
+        this.filesService = filesService;
+    }
 
     @Override
     public int getDailyBudget() {
@@ -34,9 +44,10 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public long addTransaction(Transaction transaction) { //Добавление транзакции(когда мы покупаем что-то)
-        Map<Long, Transaction> monthTransactions = transactions.getOrDefault(LocalDate.now().getMonth(), new LinkedHashMap<>());
+        LinkedHashMap<Long, Transaction> monthTransactions = transactions.getOrDefault(LocalDate.now().getMonth(), new LinkedHashMap<>());
         monthTransactions.put(lastId, transaction);
         transactions.put(LocalDate.now().getMonth(), monthTransactions);
+        saveToFile();
         return lastId++;
     }
 
@@ -56,6 +67,7 @@ public class BudgetServiceImpl implements BudgetService {
         for (Map<Long, Transaction> transactionByMonth : transactions.values()) {
             if (transactionByMonth.containsKey(id)) {
                 transactionByMonth.put(id, transaction);
+                saveToFile();
             }
         }
         return transaction;
@@ -71,7 +83,8 @@ public class BudgetServiceImpl implements BudgetService {
         }
         return false;
     }
-@Override
+
+    @Override
     public void deleteAllTransactions() {
         transactions = new TreeMap<>();
     }
@@ -84,11 +97,9 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     public int getAllSpend() { //Получить все траты (подсчет сколько мы уже потратили)
         Map<Long, Transaction> monthTransactions = transactions.getOrDefault(LocalDate.now().getMonth(), new LinkedHashMap<>());
-
-
         int sum = 0;
         for (Transaction transaction : monthTransactions.values()) {
-            sum += transaction.getSum();
+            sum =sum + transaction.getSum();
         }
         return sum;
     }
@@ -104,5 +115,28 @@ public class BudgetServiceImpl implements BudgetService {
         getVacationBonus(vacationDaysCount);
         int salary = SALARY / workingDaysInMonth * (workingDaysInMonth - vacationsWorkingDaysCount);
         return salary + getVacationBonus(vacationDaysCount);
+    }
+
+    private void saveToFile() {
+        try {
+
+            String json = new ObjectMapper().writeValueAsString(transactions);
+            filesService.saveToFile(json);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void readFromFile() {
+        String json = filesService.readFromFile();
+        try {
+           transactions = new ObjectMapper().readValue(json, new TypeReference<TreeMap<Month, LinkedHashMap<Long, Transaction>>>(){});
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+    }
+@PostConstruct
+    private void init() {
+        readFromFile();
     }
 }
